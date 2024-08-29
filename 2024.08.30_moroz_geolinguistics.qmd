@@ -1,0 +1,153 @@
+---
+title: "Использование картографирования в лингвистических исследованиях"
+lang: ru
+author: 
+  - name: "Г. А. Мороз"
+    affiliation: "Международная лаборатория языковой конвергенции" 
+date: "08/30/2024"
+date-format: "D.MM.YYYY"
+format: 
+  beamer:
+    theme: Singapore
+    mainfont: Brill
+    monofont: Iosevka
+    df-print: kable
+    pdf-engine: xelatex
+    cite-method: natbib
+    classoption: t
+    header-includes: |
+       \setbeamertemplate{footline}[page number]
+urlcolor: teal
+citecolor: teal
+abstract: В своем докладе я попробую окинуть взглядом разные использования картографии в лингвистических исследованиях.
+execute: 
+  echo: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| eval: false
+library(tidyverse)
+library(openalexR)
+
+c("2049-7547", "0942-4040") |> 
+  map(function(i){
+    oa_fetch(primary_location.source.issn = i, 
+             entity = "works", 
+             abstract = TRUE,
+             verbose = TRUE)  |> 
+      select(so, ab)
+    }) |> 
+  list_rbind() |> 
+  na.omit() |> 
+  write_csv("data/journal_abstracts.csv", na = "")
+
+library(rvest)
+
+map(1:4, function(i){
+  str_glue("https://journals.plos.org/plosone/browse/linguistic_geography?page={i}") |> 
+    read_html() |>   
+    html_nodes("h2 > a") |> 
+    html_attr("href") 
+}) |> 
+  unlist() ->
+  plos_geography_urls
+
+plos_geography_urls <- str_c("https://journals.plos.org", plos_geography_urls)
+
+map(plos_geography_urls, function(i){
+  read_html(i) |> 
+    html_node("div.abstract-content") |> 
+    html_node("p") |> 
+    html_text()
+}) |> 
+  unlist() ->
+  abstracts
+
+read_csv("data/journal_abstracts.csv") |> 
+  bind_rows(tibble(so = "PLOS ONE (Linguistic Geography)",
+                   ab = abstracts)) |> 
+  rename(journal = so,
+         abstract = ab) |> 
+  mutate(abstract = str_remove(abstract, "Abstract "),
+         abstract = str_squish(abstract),
+         language = cld3::detect_language(abstract)) |>
+  filter(str_detect(abstract, "We’ve built this digital research platform", negate = TRUE),
+         str_detect(abstract, "An abstract is not available for this content", negate = TRUE),
+         language == "en") |> 
+  select(-language) |> 
+  write_csv("data/journal_abstracts.csv", na = "")
+```
+
+## Лингвистическая география
+
+>- Лингвистическая география исследует распределение языков и языковых признаков в пространстве
+>- Лингвистическая география объединяет разные области лингвистики, где картографирование языков и языковых признаков или составление геоинформационной системы является полноценным методом получения нового лингвистического знания
+>- По-английски можно встретить два термина: *language geography* и *geolinguistics*.
+>- Я исключаю из обсуждения работы по топонимике
+
+## Картографирование в лингвистике
+
+- визуализация какого-то идиома/языковых признаков
+    - в пространстве
+    - во времени
+    - относительно других идиомов/языковых признаков
+    - относительно нелингвистических параметров (например, высотность, температура, социополитика)
+
+## Журналы по лингвистической географии
+
+- [Раздел Linguistic Geography](https://journals.plos.org/plosone/browse/linguistic_geography) в журнале PLOS ONE --- ([Q1](https://www.scimagojr.com/journalsearch.php?q=10600153309&tip=sid&clean=0))
+- [Dialectologia et Geolinguistica](http://geo-linguistics.org/Journal.html) --- ([Q2--Q4](https://www.scimagojr.com/journalsearch.php?q=5800207734&tip=sid&clean=0))
+- [Journal of Linguistic Geography](https://core-cms.prod.aop.cambridge.org/core/journals/journal-of-linguistic-geography)
+
+## Журналы по лингвистической географии
+
+```{r}
+library(tidyverse)
+library(tidytext)
+df <- read_csv("data/journal_abstracts.csv")
+```
+
+Я выкачал аннотации из этих журналов (`r nrow(df)` аннотаций):
+
+```{r}
+df |> 
+  unnest_tokens(output = "word", input = "abstract") |> 
+  count(word, sort = TRUE) |> 
+  anti_join(stop_words) |> 
+  filter(n > 40) |> 
+  ggplot(aes(label = word, size = n))+
+  ggwordcloud::geom_text_wordcloud(rm_outside = FALSE, grid_margin = 1, seed = 42,
+                      shape = "square")+
+  scale_size_area(max_size = 25)+
+  theme_minimal()
+```
+
+## Журналы по лингвистической географии
+
+Топ-10 типичных биграм на основе tf-idf (`r nrow(df)` аннотаций):
+
+```{r}
+df |> 
+  unnest_tokens(output = "bigram", input = "abstract", token = "ngrams", n = 2) |> 
+  separate(bigram, into = c("word_1", "word_2"), sep = " ") |> 
+  anti_join(stop_words, by = c("word_1" = "word")) |> 
+  anti_join(stop_words, by = c("word_2" = "word")) |> 
+  mutate(bigram = str_c(word_1, " ", word_2)) |> 
+  count(journal, bigram) |> 
+  bind_tf_idf(bigram, journal, n) |> 
+  arrange(desc(tf_idf)) |> 
+  group_by(journal) |> 
+  slice_max(order_by = tf_idf, n = 10) |> 
+  ggplot(aes(reorder_within(bigram, n, journal),
+             n, fill = journal)) +
+  geom_bar(stat="identity") +
+  facet_wrap(~ journal, scales = "free") +
+  coord_flip() +
+  scale_x_reordered() +
+  labs(x = NULL, y = NULL)+
+  theme_minimal()+
+  theme(legend.position = "none")
+```
+
