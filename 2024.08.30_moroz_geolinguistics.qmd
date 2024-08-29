@@ -6,6 +6,7 @@ author:
     affiliation: "Международная лаборатория языковой конвергенции" 
 date: "08/30/2024"
 date-format: "D.MM.YYYY"
+bibliography: bibliography.bib
 format: 
   beamer:
     theme: Singapore
@@ -80,6 +81,8 @@ read_csv("data/journal_abstracts.csv") |>
   write_csv("data/journal_abstracts.csv", na = "")
 ```
 
+# Лингвистическая география
+
 ## Лингвистическая география
 
 >- Лингвистическая география исследует распределение языков и языковых признаков в пространстве
@@ -95,6 +98,8 @@ read_csv("data/journal_abstracts.csv") |>
     - относительно других идиомов/языковых признаков
     - относительно нелингвистических параметров (например, высотность, температура, социополитика)
 
+# Журналы
+
 ## Журналы по лингвистической географии
 
 - [Раздел Linguistic Geography](https://journals.plos.org/plosone/browse/linguistic_geography) в журнале PLOS ONE --- ([Q1](https://www.scimagojr.com/journalsearch.php?q=10600153309&tip=sid&clean=0))
@@ -109,7 +114,7 @@ library(tidytext)
 df <- read_csv("data/journal_abstracts.csv")
 ```
 
-Я выкачал аннотации из этих журналов (`r nrow(df)` аннотаций):
+Я [выкачал аннотации](https://raw.githubusercontent.com/agricolamz/2024.08.30_geolinguistics/main/data/journal_abstracts.csv) из этих журналов (`r nrow(df)` аннотаций):
 
 ```{r}
 df |> 
@@ -151,3 +156,41 @@ df |>
   theme(legend.position = "none")
 ```
 
+# Инструменты
+
+## Инструменты для картографирования
+
+- ESRI (ArcGIS)
+- QGIS
+- R пакеты
+    - `ggplot2`
+    - `leaflet`
+    - лингвистические
+        - [`lingtypology`](https://ropensci.github.io/lingtypology/)
+        - [`glottospace`](https://github.com/glottospace/glottospace)
+        - [`lingtypr`](https://gitlab.com/laurabecker/lingtypr)
+        
+- Python пакеты
+    - `Arcpy`
+    - `Geopandas`
+    - лингвистические
+        - [`lingpy`](https://lingpy.org/)
+        - [`LingTypology`](https://oneadder.github.io/lingtypology/html/index.html)
+        
+## Проекты Международная лаборатория языковой конвергенции
+
+- [страница ресурсов](https://lingconlab.ru/)
+- [Корпус Просодии Русских Диалектов](https://lingconlab.github.io/PRuD/)
+- [Атлас диалектов рутульского языка](https://lingconlab.github.io/rutul_dialectology/)
+- [Типологический атлас языков Дагестана](https://lingconlab.github.io/TALD/)
+
+# Геостатистика
+
+## Обусловлено ли распределение лингвистического признака географически?
+
+Меры для измерения
+
+>- Пространсственная автокорреляция:
+>     - Moran's I [@moran48; @odland88]. Мера I, изменяется от -1 до 1, где 0 обозначает произвольное пространственное распределение. Положительное значение означает тенденцию похожих значений кластеризоваться пространственно вместе. Отрицательное значение означает тенденцию непохожих значений кластеризоваться пространственно вместе. 
+>     - Getis-Ord G~i* [@ord95]. Эта мера тестирует локальную пространственную автокорреляцию, которая пытается ответить на вопрос, насколько каждая из точек статистически значимо отличается от соседей.
+>- Примеры использования в лингвистике: [@tamminga13; @grieve13].
